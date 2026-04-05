@@ -1,9 +1,0 @@
-version: "3"
-
-services:
-  prom-server:
-    image: prom/prometheus # use this image for prometheus server
-    ports:
-      - 9090:9090 # expose port 9090 for prometheus server
-    volumes:
-      - ./src/configs/prometheus-config.yml:/etc/prometheus/prometheus.yml # mount the prometheus config file
