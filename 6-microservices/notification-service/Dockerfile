@@ -1,0 +1,22 @@
+FROM node:18
+
+# Set working dir
+WORKDIR /app
+
+# Copy package files first (better caching)
+COPY package*.json ./
+
+# Install deps
+RUN npm install
+
+# Copy rest of code
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+# Expose port
+EXPOSE 5004
+
+# Start app
+CMD ["npm", "start"]
