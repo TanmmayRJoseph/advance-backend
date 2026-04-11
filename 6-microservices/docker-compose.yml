@@ -1,93 +1,112 @@
-# version: '3.8'
+version: '3.8'
 
 services:
   # MongoDB Service
   mongodb:
-    image: mongodb/mongodb-community-server:latest
+    image: mongo:6
     container_name: mongo
     ports:
-    - "27017:27017"
+      - "27017:27017"
     volumes:
-    - mongo-data:/data/db
-  
+      - mongo-data:/data/db
+    restart: always
+
   # RabbitMQ Service
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq_node
     ports:
-    - "5672:5672"
-    - "15672:15672"
-  
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Gateway
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
     ports:
-    - "8080:8080"
+      - "8080:8080"
     depends_on:
-    - auth-service
-    - product-service
-    - order-service
-    - notification-service
-    - mongodb
-    - rabbitmq
+      auth-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
     environment:
-    - PORT=8080
-    - AUTH_SERVICE_URL=http://auth-service:5001
-    - PRODUCT_SERVICE_URL=http://product-service:5002
-    - ORDER_SERVICE_URL=http://order-service:5003
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PRODUCT_SERVICE_URL=http://product-service:5002
+      - ORDER_SERVICE_URL=http://order-service:5003
+    restart: always
 
-
-  # 1. User Service
+  # 1. Auth Service
   auth-service:
     build: ./auth-service
     container_name: auth-service
     ports:
-    - "5001:5001"
+      - "5001:5001"
     depends_on:
-    - mongodb
-    - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
     environment:
-    - PORT=5001
-    - MONGO_URI=mongodb://mongo:27017/auth-service
-    - JWT_SECRET=your_jwt_secret_key
-  
+      - PORT=5001
+      - MONGO_URI=mongodb://mongo:27017/auth-service
+      - JWT_SECRET=your_jwt_secret_key
+    restart: always
 
   # 2. Product Service
   product-service:
     build: ./product-service
     container_name: product-service
     ports:
-    - "5002:5002"
+      - "5002:5002"
     depends_on:
-    - mongodb
-    - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
     environment:
-    - PORT=5002
-    - MONGO_URI=mongodb://mongo:27017/product-service
-  
+      - PORT=5002
+      - MONGO_URI=mongodb://mongo:27017/product-service
+    restart: always
 
   # 3. Order Service
   order-service:
     build: ./order-service
     container_name: order-service
     ports:
-    - "5003:5003"
+      - "5003:5003"
     depends_on:
-    - mongodb
-    - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
     environment:
-    - PORT=5003
-    - MONGO_URI=mongodb://mongo:27017/order-service
-    - JWT_SECRET=your_jwt_secret_key
-  
+      - PORT=5003
+      - MONGO_URI=mongodb://mongo:27017/order-service
+      - JWT_SECRET=your_jwt_secret_key
+    restart: always
 
-  # 4. Notification service
+  # 4. Notification Service (Consumer)
   notification-service:
     build: ./notification-service
     container_name: notification-service
     depends_on:
-    - rabbitmq
-  
+      rabbitmq:
+        condition: service_healthy
+    restart: always
 
 volumes:
   mongo-data:

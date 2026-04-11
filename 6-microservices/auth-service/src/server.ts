@@ -24,8 +24,18 @@ app.get("/health", (req: Request, res: Response) => {
 
 app.use("/", userRoutes);
 
-app.listen(PORT, () => {
-  console.log(`⚡ Server running at http://localhost:${PORT}`);
-  connectRabbitMQ();
-  console.log("✅ RabbitMQ connected");
-});
+const startServer = async () => {
+  try {
+    await connectRabbitMQ(); // 🔥 MUST await
+
+    app.listen(PORT, () => {
+      console.log(`⚡ Server running at http://localhost:${PORT}`);
+      console.log("✅ RabbitMQ connected");
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
